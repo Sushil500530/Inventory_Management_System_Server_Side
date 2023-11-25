@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config()
 var jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const app = express();
 const port = process.env.PORT || 5000;
@@ -160,7 +160,18 @@ async function run() {
             }
         })
 
-        
+        // delete method find unique product id
+        app.delete('/products/:id', async(req,res) => {
+            try{
+                const id = req.params.id;
+                const query = {_id: new ObjectId(id)};
+                const result = await productsCollection.deleteOne(query);
+                res.send(result);
+            }
+            catch(err){
+                console.log(err);
+            }
+        })
 
 
 
