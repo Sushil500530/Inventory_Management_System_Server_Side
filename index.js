@@ -35,7 +35,7 @@ async function run() {
         // all collection here 
         const usersCollection = client.db('inventoryDB').collection('users');
         const shopsCollection = client.db('inventoryDB').collection('shops');
-        const productsCollection = client.db('inventoryDB').collection('users');
+        const productsCollection = client.db('inventoryDB').collection('products');
 
 
         // jwt related api 
@@ -69,13 +69,28 @@ async function run() {
                 console.log(err);
             }
         }
-
+        // use verify admin after verify token
+        const verfyAdmin = async (req, res, next) => {
+            try {
+                const email = req.user?.email;
+                console.log(req.user);
+                const query = { email: email };
+                const user = await usersCollection.findOne(query);
+                const isAdmin = user?.role === 'admin';
+                if (!isAdmin) {
+                    return res.status(403).send({ message: 'forbidden access' })
+                }
+                next()
+            }
+            catch (error) {
+                console.log(error);
+            }
+        }
 
 
         // user related api 
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyToken, verfyAdmin, async (req, res) => {
             try {
-
                 const result = await usersCollection.find().toArray();
                 res.send(result)
             }
@@ -85,15 +100,13 @@ async function run() {
         })
 
         // find admin email 
-        app.get('/users/admin/:email',verifyToken, async (req, res) => {
+        app.get('/users/admin/:email', verifyToken, async (req, res) => {
             try {
                 const email = req.params.email;
-                console.log('email admin is', email);
                 if (req.params.email !== req.user?.email) {
                     return res.status(403).send({ message: 'forbidden access' })
                 }
                 const query = { email: email };
-                console.log(query);
                 const user = await usersCollection.findOne(query);
                 let admin = false;
                 if (user) {
@@ -121,7 +134,33 @@ async function run() {
             }
         })
 
+        // products related api 
+        // get product for unique email 
+        app.get('/products', async (req, res) => {
+            try {
+                const email = req.query.email;
+                const query = { email: email }
+                const result = await productsCollection.find(query).toArray();
+                res.send(result);
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
 
+        // get data from client side 
+        app.post('/products', async (req, res) => {
+            try {
+                const product = req.body;
+                const result = await productsCollection.insertOne(product);
+                res.send(result)
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
+
+        
 
 
 
