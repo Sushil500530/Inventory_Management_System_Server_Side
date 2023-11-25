@@ -10,10 +10,11 @@ const port = process.env.PORT || 5000;
 // middleware 
 app.use(cors({
     origin: [
-        "http://localhost:5173",
-        "http://localhost:5174"
-    ]
-}));
+        'http://localhost:5173',
+        'http://localhost:5174'],
+    credentials: true,
+    optionSuccessStatus: 200,
+}))
 app.use(express.json());
 
 
@@ -33,6 +34,8 @@ async function run() {
     try {
         // all collection here 
         const usersCollection = client.db('inventoryDB').collection('users');
+        const shopsCollection = client.db('inventoryDB').collection('shops');
+        const productsCollection = client.db('inventoryDB').collection('users');
 
 
         // jwt related api 
@@ -46,6 +49,26 @@ async function run() {
                 console.log(err);
             }
         })
+        // verify token 
+        const verifyToken = (req, res, next) => {
+            try {
+                if (!req?.headers?.authorization) {
+                    return res.status(401).send({ message: 'unAuthorized access' })
+                }
+                const token = req?.headers?.authorization?.split(' ')[1];
+                jwt.verify(token, process.env.ACCEASS_TOKEN_SECRET, (error, decoded) => {
+                    if (error) {
+                        console.log(error);
+                        return res.status(401).send({ message: 'unAuthorized access' })
+                    }
+                    req.user = decoded;
+                    next();
+                })
+            }
+            catch (err) {
+                console.log(err);
+            }
+        }
 
 
 
@@ -61,6 +84,27 @@ async function run() {
             }
         })
 
+        // find admin email 
+        app.get('/users/admin/:email',verifyToken, async (req, res) => {
+            try {
+                const email = req.params.email;
+                console.log('email admin is', email);
+                if (req.params.email !== req.user?.email) {
+                    return res.status(403).send({ message: 'forbidden access' })
+                }
+                const query = { email: email };
+                console.log(query);
+                const user = await usersCollection.findOne(query);
+                let admin = false;
+                if (user) {
+                    admin = user?.role === 'admin'
+                }
+                res.send({ admin })
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
         app.post('/users', async (req, res) => {
             try {
                 const user = req.body;
@@ -76,6 +120,9 @@ async function run() {
                 console.log(error);
             }
         })
+
+
+
 
 
         // Send a ping to confirm a successful connection
