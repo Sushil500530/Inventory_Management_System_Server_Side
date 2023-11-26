@@ -34,6 +34,7 @@ async function run() {
     try {
         // all collection here 
         const usersCollection = client.db('inventoryDB').collection('users');
+        const managersCollection = client.db('inventoryDB').collection('managers');
         const shopsCollection = client.db('inventoryDB').collection('shops');
         const productsCollection = client.db('inventoryDB').collection('products');
         const salesCollection = client.db('inventoryDB').collection('sales');
@@ -122,7 +123,7 @@ async function run() {
         app.post('/users', async (req, res) => {
             try {
                 const user = req.body;
-                const query = { email: user.email };
+                const query = { email: user?.email };
                 const existingUser = await usersCollection.findOne(query);
                 if (existingUser) {
                     return res.send({ message: 'user already exists', insertedId: null })
@@ -216,6 +217,40 @@ async function run() {
             }
         })
 
+        // became managers related api 
+          // user related api 
+          app.get('/managers', verifyToken, async (req, res) => {
+            try {
+                const result = await managersCollection.find().toArray();
+                res.send(result)
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
+
+       
+        app.patch('/managers',verifyToken, async (req, res) => {
+            try {
+                const manager = req.body;
+                const email = req.user?.email;
+                const find = {email: email}
+                const query = {role:manager.role}
+                const updateDoc = {
+                    $set : {
+                        ...query
+                    }
+                }
+                const existingUser = await usersCollection.findOne(find);
+                const currentUser = await usersCollection.updateOne(existingUser,updateDoc);
+                console.log(currentUser);
+                const result = await managersCollection.insertOne(manager);
+                res.send(result)
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
         // sales related api 
 
 
