@@ -91,9 +91,20 @@ async function run() {
 
 
         // user related api 
-        app.get('/users', verifyToken, verfyAdmin, async (req, res) => {
+        app.get('/users', verifyToken,  async (req, res) => {
             try {
                 const result = await usersCollection.find().toArray();
+                res.send(result)
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
+        app.get('/user/:email', async (req, res) => {
+            try {
+                const email = req.params?.email;
+                // console.log('who is this',email);
+                const result = await usersCollection.findOne({email});
                 res.send(result)
             }
             catch (error) {
@@ -148,7 +159,7 @@ async function run() {
             }
         })
         // data query from email 
-        app.get('/products', async (req, res) => {
+        app.get('/products', verifyToken, async (req, res) => {
             try {
                 const email = req.query.email;
                 const query = { email: email }
@@ -173,7 +184,7 @@ async function run() {
         })
 
         // delete method find unique product id
-        app.delete('/products/:id', async (req, res) => {
+        app.delete('/products/:id', verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
@@ -185,7 +196,7 @@ async function run() {
             }
         })
         // delete method find unique product id
-        app.get('/product/:id', async (req, res) => {
+        app.get('/product/:id',verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
@@ -198,7 +209,7 @@ async function run() {
         })
 
         // patch method updated product 
-        app.put('/products/:id', async (req, res) => {
+        app.put('/products/:id', verifyToken, async (req, res) => {
             try {
                 const product = req.body;
                 const id = req.params.id;
@@ -235,6 +246,7 @@ async function run() {
                 const manager = req.body;
                 const email = req.user?.email;
                 const find = {email: email}
+                console.log(find);
                 const query = {role:manager.role}
                 const updateDoc = {
                     $set : {
@@ -242,6 +254,7 @@ async function run() {
                     }
                 }
                 const existingUser = await usersCollection.findOne(find);
+                console.log(existingUser);
                 const currentUser = await usersCollection.updateOne(existingUser,updateDoc);
                 console.log(currentUser);
                 const result = await managersCollection.insertOne(manager);
