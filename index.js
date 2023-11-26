@@ -36,6 +36,7 @@ async function run() {
         const usersCollection = client.db('inventoryDB').collection('users');
         const shopsCollection = client.db('inventoryDB').collection('shops');
         const productsCollection = client.db('inventoryDB').collection('products');
+        const salesCollection = client.db('inventoryDB').collection('sales');
 
 
         // jwt related api 
@@ -136,6 +137,16 @@ async function run() {
 
         // products related api 
         // get product for unique email 
+        app.get('/all-products', async (req, res) => {
+            try {
+                const result = await productsCollection.find().toArray();
+                res.send(result);
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
+        // data query from email 
         app.get('/products', async (req, res) => {
             try {
                 const email = req.query.email;
@@ -161,17 +172,51 @@ async function run() {
         })
 
         // delete method find unique product id
-        app.delete('/products/:id', async(req,res) => {
-            try{
+        app.delete('/products/:id', async (req, res) => {
+            try {
                 const id = req.params.id;
-                const query = {_id: new ObjectId(id)};
+                const query = { _id: new ObjectId(id) };
                 const result = await productsCollection.deleteOne(query);
                 res.send(result);
             }
-            catch(err){
+            catch (err) {
                 console.log(err);
             }
         })
+        // delete method find unique product id
+        app.get('/product/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+                const result = await productsCollection.findOne(query);
+                res.send(result);
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
+
+        // patch method updated product 
+        app.put('/products/:id', async (req, res) => {
+            try {
+                const product = req.body;
+                const id = req.params.id;
+                const filter = { _id: new ObjectId(id) };
+                const options = { upsert: true };
+                const updateDoc = {
+                    $set: {
+                        ...product
+                    }
+                }
+                const result = await productsCollection.updateOne(filter, updateDoc, options);
+                res.send(result)
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
+
+        // sales related api 
 
 
 
@@ -184,9 +229,6 @@ async function run() {
     }
 }
 run().catch(console.dir);
-
-
-
 
 app.get('/', (req, res) => {
     res.send("Inventory Management System is Running.....")
