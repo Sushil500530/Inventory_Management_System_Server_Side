@@ -38,6 +38,7 @@ async function run() {
         const shopsCollection = client.db('inventoryDB').collection('shops');
         const productsCollection = client.db('inventoryDB').collection('products');
         const salesCollection = client.db('inventoryDB').collection('sales');
+        const paymentsCollection = client.db('inventoryDB').collection('payments');
 
 
         // jwt related api 
@@ -91,7 +92,7 @@ async function run() {
 
 
         // user related api 
-        app.get('/users', verifyToken,  async (req, res) => {
+        app.get('/users', verifyToken, async (req, res) => {
             try {
                 const result = await usersCollection.find().toArray();
                 res.send(result)
@@ -104,7 +105,7 @@ async function run() {
             try {
                 const email = req.params?.email;
                 // console.log('who is this',email);
-                const result = await usersCollection.findOne({email});
+                const result = await usersCollection.findOne({ email });
                 res.send(result)
             }
             catch (error) {
@@ -162,7 +163,7 @@ async function run() {
         app.get('/all-product/:id', async (req, res) => {
             try {
                 const id = req.params.id;
-                const query = {_id: new ObjectId(id)}
+                const query = { _id: new ObjectId(id) }
                 const result = await productsCollection.findOne(query);
                 res.send(result);
             }
@@ -208,7 +209,7 @@ async function run() {
             }
         })
         // delete method find unique product id
-        app.get('/product/:id',verifyToken, async (req, res) => {
+        app.get('/product/:id', verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
@@ -241,8 +242,8 @@ async function run() {
         })
 
         // became managers related api 
-          // user related api 
-          app.get('/managers', verifyToken, async (req, res) => {
+        // user related api 
+        app.get('/managers', verifyToken, async (req, res) => {
             try {
                 const result = await managersCollection.find().toArray();
                 res.send(result)
@@ -265,22 +266,22 @@ async function run() {
         //     }
         // })
 
-    //    patch method add other find and insert data 
-        app.patch('/managers',verifyToken, async (req, res) => {
+        //    patch method add other find and insert data 
+        app.patch('/managers', verifyToken, async (req, res) => {
             try {
                 const manager = req.body;
                 const email = req.user?.email;
-                const find = {email: email}
+                const find = { email: email }
                 console.log(find);
-                const query = {role:manager.role}
+                const query = { role: manager.role }
                 const updateDoc = {
-                    $set : {
+                    $set: {
                         ...query
                     }
                 }
                 const existingUser = await usersCollection.findOne(find);
                 console.log(existingUser);
-                const currentUser = await usersCollection.updateOne(existingUser,updateDoc);
+                const currentUser = await usersCollection.updateOne(existingUser, updateDoc);
                 console.log(currentUser);
                 const result = await managersCollection.insertOne(manager);
                 res.send(result)
@@ -293,31 +294,31 @@ async function run() {
 
         // sales related api 
         // get sales data 
-        app.get('/seles-products', async(req,res) => {
-            try{
+        app.get('/sales-products', async (req, res) => {
+            try {
                 const result = await salesCollection.find().toArray();
                 res.send(result)
             }
-            catch(err){
+            catch (err) {
                 console.log(err);
             }
         })
         // insert sales data from client side 
-        app.post('/seles-product', async(req,res) => {
-            try{
+        app.post('/sales-product', async (req, res) => {
+            try {
                 const buyData = req.body;
                 const result = await salesCollection.insertOne(buyData);
                 res.send(result)
             }
-            catch(err){
+            catch (err) {
                 console.log(err);
             }
         })
         // find sales collection procuct for unique email
-        app.get('/seles-product', async (req, res) => {
+        app.get('/sales-product', async (req, res) => {
             try {
                 const email = req.query?.email;
-                const query = {email: email}
+                const query = { email: email }
                 const result = await salesCollection.find(query).toArray();
                 res.send(result)
             }
@@ -326,10 +327,10 @@ async function run() {
             }
         })
         // delete method for sale one product 
-        app.delete('/seles-product-delete/:id', async (req, res) => {
+        app.delete('/sales-product-delete/:id', async (req, res) => {
             try {
                 const id = req.params.id;
-                const query = {_id: new  ObjectId(id)}
+                const query = { _id: new ObjectId(id) }
                 const result = await salesCollection.deleteOne(query);
                 res.send(result)
             }
@@ -339,25 +340,54 @@ async function run() {
         })
 
         // payment related api or payment details 
-        app.post('/create-payment-intent', async(req,res) => {
-            try{
-                const {price} = req.body;
+        app.post('/create-payment-intent', async (req, res) => {
+            try {
+                const { price } = req.body;
                 const amount = parseInt(price * 100);
                 console.log('get price--->', amount);
                 const paymentIntent = await stripe?.paymentIntents?.create({
                     amount: amount,
                     currency: 'usd',
-                    payment_method_types:['card']
+                    payment_method_types: ['card']
                 });
                 res.send({
                     clientSecret: paymentIntent?.client_secret
                 })
             }
-            catch(err){
+            catch (err) {
                 console.log(err);
             }
         })
-        
+
+        // get payment details 
+        app.post('/payments', async (req, res) => {
+            try {
+                const paymentInfo = req.body;
+                const paymentResult = await paymentsCollection.insertOne(paymentInfo);
+                // delete data from sale collection in unique data 
+                const query = {
+                    _id: {
+                        $in: paymentInfo.saleIds.map(id => new ObjectId(id))
+                    }
+                }
+                const deleteResult = await salesCollection.deleteMany(query);
+                res.send({ paymentResult, deleteResult })
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
+        //  get all payment data find in one email id 
+        app.get('/payments/:email', verifyToken, async (req, res) => {
+            const query = { email: req.params.email };
+            console.log('====>', query);
+            // console.log('payment user email--->',req?.user?.email);
+            if (req?.params?.email !== req?.user?.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+            const result = await paymentsCollection.find(query).toArray();
+            res.send(result);
+        })
 
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
