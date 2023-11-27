@@ -17,7 +17,7 @@ app.use(cors({
 }))
 app.use(express.json());
 
-
+// console.log(process.env.STRIPE_SECRET_KEY);
 
 const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.PASS_DB}@cluster0.ruakr2a.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -306,7 +306,6 @@ async function run() {
         app.post('/seles-product', async(req,res) => {
             try{
                 const buyData = req.body;
-                console.log(buyData);
                 const result = await salesCollection.insertOne(buyData);
                 res.send(result)
             }
@@ -314,12 +313,11 @@ async function run() {
                 console.log(err);
             }
         })
+        // find sales collection procuct for unique email
         app.get('/seles-product', async (req, res) => {
             try {
                 const email = req.query?.email;
-                console.log('find i -->',email);
                 const query = {email: email}
-                console.log('find i -->',query);
                 const result = await salesCollection.find(query).toArray();
                 res.send(result)
             }
@@ -327,7 +325,39 @@ async function run() {
                 console.log(error);
             }
         })
+        // delete method for sale one product 
+        app.delete('/seles-product-delete/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = {_id: new  ObjectId(id)}
+                const result = await salesCollection.deleteOne(query);
+                res.send(result)
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
 
+        // payment related api or payment details 
+        app.post('/create-payment-intent', async(req,res) => {
+            try{
+                const {price} = req.body;
+                const amount = parseInt(price * 100);
+                console.log('get price--->', amount);
+                const paymentIntent = await stripe?.paymentIntents?.create({
+                    amount: amount,
+                    currency: 'usd',
+                    payment_method_types:['card']
+                });
+                res.send({
+                    clientSecret: paymentIntent?.client_secret
+                })
+            }
+            catch(err){
+                console.log(err);
+            }
+        })
+        
 
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
