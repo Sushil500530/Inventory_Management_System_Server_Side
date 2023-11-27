@@ -148,10 +148,22 @@ async function run() {
         })
 
         // products related api 
-        // get product for unique email 
+        // get all product
         app.get('/all-products', async (req, res) => {
             try {
                 const result = await productsCollection.find().toArray();
+                res.send(result);
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
+        // find unique product 
+        app.get('/all-product/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = {_id: new ObjectId(id)}
+                const result = await productsCollection.findOne(query);
                 res.send(result);
             }
             catch (err) {
@@ -239,8 +251,21 @@ async function run() {
                 console.log(error);
             }
         })
+        //   app.get('/manager', async (req, res) => {
+        //     try {
+        //         const email = req.query.email;
+        //         console.log('find i -->',email);
+        //         const query = {email: email}
+        //         console.log('find i -->',query);
+        //         const result = await managersCollection.findOne();
+        //         res.send(result)
+        //     }
+        //     catch (error) {
+        //         console.log(error);
+        //     }
+        // })
 
-       
+    //    patch method add other find and insert data 
         app.patch('/managers',verifyToken, async (req, res) => {
             try {
                 const manager = req.body;
@@ -264,8 +289,44 @@ async function run() {
                 console.log(error);
             }
         })
-        // sales related api 
 
+
+        // sales related api 
+        // get sales data 
+        app.get('/seles-products', async(req,res) => {
+            try{
+                const result = await salesCollection.find().toArray();
+                res.send(result)
+            }
+            catch(err){
+                console.log(err);
+            }
+        })
+        // insert sales data from client side 
+        app.post('/seles-product', async(req,res) => {
+            try{
+                const buyData = req.body;
+                console.log(buyData);
+                const result = await salesCollection.insertOne(buyData);
+                res.send(result)
+            }
+            catch(err){
+                console.log(err);
+            }
+        })
+        app.get('/seles-product', async (req, res) => {
+            try {
+                const email = req.query?.email;
+                console.log('find i -->',email);
+                const query = {email: email}
+                console.log('find i -->',query);
+                const result = await salesCollection.find(query).toArray();
+                res.send(result)
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
 
 
         // Send a ping to confirm a successful connection
