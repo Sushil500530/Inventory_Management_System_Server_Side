@@ -147,7 +147,17 @@ async function run() {
                 console.log(error);
             }
         })
-
+        app.delete('/user/:id', verifyToken,verfyAdmin, async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+                const result = await usersCollection.deleteOne(query);
+                res.send(result);
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
         // products related api 
         // get all product
         app.get('/all-products', async (req, res) => {
@@ -177,6 +187,18 @@ async function run() {
                 const email = req.query.email;
                 const query = { email: email }
                 const result = await productsCollection.find(query).toArray();
+                res.send(result);
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
+        // delete product in database 
+        app.delete('/delete-product/:id', verifyToken,verfyAdmin, async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+                const result = await productsCollection.deleteOne(query);
                 res.send(result);
             }
             catch (err) {
