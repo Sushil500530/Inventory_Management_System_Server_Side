@@ -313,7 +313,6 @@ async function run() {
             }
         })
 
-
         // sales related api 
         // get sales data 
         app.get('/sales-products', async (req, res) => {
@@ -380,7 +379,6 @@ async function run() {
                 console.log(err);
             }
         })
-
         // get payment details 
         app.post('/payments', async (req, res) => {
             try {
@@ -411,6 +409,32 @@ async function run() {
             res.send(result);
         })
 
+        // data analysis ro stats 
+        app.get('/admin-stats', async(req,res) => {
+            try{
+                const users = await usersCollection.estimatedDocumentCount();
+                const productItems = await productsCollection.estimatedDocumentCount();
+                const orders = await paymentsCollection.estimatedDocumentCount();
+                
+                const result = await paymentsCollection.aggregate([
+                    {
+                        $group: {
+                            _id:null,
+                            totalRevenue:{
+                                $sum:'$price'
+                            }
+                        }
+                    }
+                ]).toArray();
+                const revenue = result?.length > 0 ? result[0]?.totalRevenue  : 0 ;
+
+                res.send({users,productItems,orders,revenue});
+            }
+            catch(error){
+                console.log(error);
+            }
+        })
+        
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
