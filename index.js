@@ -35,7 +35,7 @@ async function run() {
         // all collection here 
         const usersCollection = client.db('inventoryDB').collection('users');
         const managersCollection = client.db('inventoryDB').collection('managers');
-        const shopsCollection = client.db('inventoryDB').collection('shops');
+        const reviewsCollection = client.db('inventoryDB').collection('reviews');
         const productsCollection = client.db('inventoryDB').collection('products');
         const salesCollection = client.db('inventoryDB').collection('sales');
         const paymentsCollection = client.db('inventoryDB').collection('payments');
@@ -112,7 +112,16 @@ async function run() {
                 console.log(error);
             }
         })
-
+        // reviews get 
+        app.get('/reviews', async (req, res) => {
+            try {
+                const result = await reviewsCollection.find().toArray();
+                res.send(result);
+            }
+            catch (error) {
+                console.log(error);
+            }
+        })
         // find admin email 
         app.get('/users/admin/:email', verifyToken, async (req, res) => {
             try {
@@ -147,7 +156,7 @@ async function run() {
                 console.log(error);
             }
         })
-        app.delete('/user/:id', verifyToken,verfyAdmin, async (req, res) => {
+        app.delete('/user/:id', verifyToken, verfyAdmin, async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
@@ -162,7 +171,9 @@ async function run() {
         // get all product
         app.get('/all-products', async (req, res) => {
             try {
-                const result = await productsCollection.find().toArray();
+                const page = parseInt(req.query?.page);
+                const size = parseInt(req.query?.size);
+                const result = await productsCollection.find().skip(page * size).limit(size).toArray();
                 res.send(result);
             }
             catch (err) {
@@ -194,7 +205,7 @@ async function run() {
             }
         })
         // delete product in database 
-        app.delete('/delete-product/:id', verifyToken,verfyAdmin, async (req, res) => {
+        app.delete('/delete-product/:id', verifyToken, verfyAdmin, async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
@@ -217,7 +228,15 @@ async function run() {
                 console.log(err);
             }
         })
-
+        app.get('/productsCount', async (req, res) => {
+            try {
+              const count = await productsCollection.estimatedDocumentCount();
+              res.send({ count })
+            }
+            catch (err) {
+              console.log(err);
+            }
+          })
         // delete method find unique product id
         app.delete('/products/:id', verifyToken, async (req, res) => {
             try {
@@ -302,9 +321,7 @@ async function run() {
                     }
                 }
                 const existingUser = await usersCollection.findOne(find);
-                console.log(existingUser);
                 const currentUser = await usersCollection.updateOne(existingUser, updateDoc);
-                console.log(currentUser);
                 const result = await managersCollection.insertOne(manager);
                 res.send(result)
             }
@@ -317,6 +334,7 @@ async function run() {
         // get sales data 
         app.get('/sales-products', async (req, res) => {
             try {
+                console.log('helllow world------>');
                 const result = await salesCollection.find().toArray();
                 res.send(result)
             }
@@ -361,6 +379,15 @@ async function run() {
         })
 
         // payment related api or payment details 
+        app.get('/all-payments', async (req, res) => {
+            try {
+                const result = await paymentsCollection.find().toArray();
+                res.send(result)
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
         app.post('/create-payment-intent', async (req, res) => {
             try {
                 const { price } = req.body;
@@ -378,6 +405,18 @@ async function run() {
             catch (err) {
                 console.log(err);
             }
+        })
+
+        //  get all payment data find in one email id 
+        app.get('/payments/:email',verifyToken, async (req, res) => {
+            const query = { email: req.params.email };
+            console.log('====>', query);
+            console.log('payment user email--->',req?.user?.email);
+            if (req?.params?.email !== req?.user?.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+            const result = await paymentsCollection.find(query).toArray();
+            res.send(result);
         })
         // get payment details 
         app.post('/payments', async (req, res) => {
@@ -397,44 +436,123 @@ async function run() {
                 console.log(error);
             }
         })
-        //  get all payment data find in one email id 
-        app.get('/payments/:email', verifyToken, async (req, res) => {
-            const query = { email: req.params.email };
-            console.log('====>', query);
-            // console.log('payment user email--->',req?.user?.email);
-            if (req?.params?.email !== req?.user?.email) {
-                return res.status(403).send({ message: 'forbidden access' })
-            }
-            const result = await paymentsCollection.find(query).toArray();
-            res.send(result);
-        })
 
         // data analysis ro stats 
-        app.get('/admin-stats', async(req,res) => {
-            try{
+        app.get('/admin-stats', async (req, res) => {
+            try {
                 const users = await usersCollection.estimatedDocumentCount();
                 const productItems = await productsCollection.estimatedDocumentCount();
                 const orders = await paymentsCollection.estimatedDocumentCount();
-                
+
                 const result = await paymentsCollection.aggregate([
                     {
                         $group: {
-                            _id:null,
-                            totalRevenue:{
-                                $sum:'$price'
+                            _id: null,
+                            totalRevenue: {
+                                $sum: '$price'
                             }
                         }
                     }
                 ]).toArray();
-                const revenue = result?.length > 0 ? result[0]?.totalRevenue  : 0 ;
+                const revenue = result?.length > 0 ? result[0]?.totalRevenue : 0;
 
-                res.send({users,productItems,orders,revenue});
+                res.send({ users, productItems, orders, revenue });
             }
-            catch(error){
+            catch (error) {
                 console.log(error);
             }
         })
-        
+
+        // using aggregate and data pipeline in 
+        // app.get('/order-stats', async (req,res) => {
+        //     const result = await paymentsCollection.aggregate([
+        //         {
+        //             // find id 
+        //             $unwind: '$menuItemIds'
+        //         },
+        //         {
+        //             // look 
+        //             $lookup: {
+        //                 // data section 
+        //                 from:'products',
+        //                 // which field are same 
+        //                 localField:'menuItemIds',
+        //                 // finding data
+        //                 foreignField: '_id',
+        //                 as:'menuItems'
+        //             }
+        //         },
+        //         {
+        //           $unwind: '$menuItems'  
+        //         },
+        //         {
+        //             // convert element 
+        //             $group : {
+        //                 _id:'$menuItems.shop_name',
+        //                 quantity : {$sum: 1},
+        //                 revenue: {
+        //                     $sum : '$menuItems.price'
+        //                 }
+        //             }
+        //         },
+        //         {
+        //             $project : {
+        //                 _id: 0,
+        //                 shop_name : '$_id',
+        //                 quantity:'$quantity',
+        //                 revenue:'$revenue'
+        //             }
+        //         }
+        //     ]).toArray();
+        //     res.send(result)
+        // })
+        app.get('/order-stats' , async (req, res) => {
+            const result = await paymentsCollection.aggregate([
+                {
+                    // kon id diye khujbo seta
+                    $unwind: '$menuItemIds'
+                },
+                {
+                    // dekhar jonno
+                    $lookup: {
+                        // ata kar sathe milabo or kotha theke milabo (seta)
+                        from: 'products',
+                        // kar sathe milbe se 
+                        localField: 'menuItemIds',
+                        // ki milbe seta 
+                        foreignField: '_id',
+                        // jodi onno akta name dite chai 
+                        as: 'menuItems'
+
+                    }
+                },
+                {
+                    // j menuItems ta k ak jagay ba upore niye aslam
+                    $unwind: '$menuItems'
+                },
+                {
+                    // akta element a convert kora
+                    $group: {
+                        _id: '$menuItems.shop_name',
+                        quantity: { $sum: 1 },
+                        revenue: {
+                            $sum: '$menuItems.price'
+                        }
+                    }
+                },
+                  {
+                    $project : {
+                      _id: 0,
+                      shop_name: '$_id',
+                      quantity:'$quantity',
+                      shop_cost: '$revenue'
+                    }
+                  }
+            ]).toArray();
+            // console.log('is result--->',result);
+            res.send(result);
+        })
+
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
