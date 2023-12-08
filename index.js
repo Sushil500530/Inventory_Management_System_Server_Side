@@ -10,8 +10,10 @@ const port = process.env.PORT || 5000;
 // middleware 
 app.use(cors({
     origin: [
-        'http://localhost:5173',
-        'http://localhost:5174'],
+        "https://clever-reading.surge.sh",
+        // 'http://localhost:5173',
+        // 'http://localhost:5174'
+    ],
     credentials: true,
     optionSuccessStatus: 200,
 }))
@@ -205,7 +207,7 @@ async function run() {
             }
         })
         // delete product in database 
-        app.delete('/delete-product/:id', verifyToken, verfyAdmin, async (req, res) => {
+        app.delete('/delete-product/:id', verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
@@ -228,7 +230,7 @@ async function run() {
                 console.log(err);
             }
         })
-        app.get('/productsCount', async (req, res) => {
+        app.get('/products-count', async (req, res) => {
             try {
               const count = await productsCollection.estimatedDocumentCount();
               res.send({ count })
@@ -332,7 +334,7 @@ async function run() {
 
         // sales related api 
         // get sales data 
-        app.get('/sales-products', async (req, res) => {
+        app.get('/sales-products',verifyToken, async (req, res) => {
             try {
                 console.log('helllow world------>');
                 const result = await salesCollection.find().toArray();
@@ -354,7 +356,7 @@ async function run() {
             }
         })
         // find sales collection procuct for unique email
-        app.get('/sales-product', async (req, res) => {
+        app.get('/sales-product',verifyToken, async (req, res) => {
             try {
                 const email = req.query?.email;
                 const query = { email: email }
@@ -366,7 +368,7 @@ async function run() {
             }
         })
         // delete method for sale one product 
-        app.delete('/sales-product-delete/:id', async (req, res) => {
+        app.delete('/sales-product-delete/:id',verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) }
@@ -379,7 +381,7 @@ async function run() {
         })
 
         // payment related api or payment details 
-        app.get('/all-payments', async (req, res) => {
+        app.get('/all-payments',verifyToken, async (req, res) => {
             try {
                 const result = await paymentsCollection.find().toArray();
                 res.send(result)
@@ -438,7 +440,7 @@ async function run() {
         })
 
         // data analysis ro stats 
-        app.get('/admin-stats', async (req, res) => {
+        app.get('/admin-stats',verifyToken,verfyAdmin, async (req, res) => {
             try {
                 const users = await usersCollection.estimatedDocumentCount();
                 const productItems = await productsCollection.estimatedDocumentCount();
@@ -506,7 +508,7 @@ async function run() {
         //     ]).toArray();
         //     res.send(result)
         // })
-        app.get('/order-stats' , async (req, res) => {
+        app.get('/order-stats' ,verifyToken, async (req, res) => {
             const result = await paymentsCollection.aggregate([
                 {
                     // kon id diye khujbo seta
